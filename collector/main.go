@@ -5,9 +5,11 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/margostino/job-pulse/configuration"
 	"github.com/margostino/job-pulse/db"
+	"github.com/margostino/job-pulse/domain"
 	"github.com/margostino/job-pulse/scrapper"
 	"github.com/margostino/job-pulse/utils"
 	"strings"
+	"time"
 )
 
 const (
@@ -26,7 +28,7 @@ func main() {
 	var fullCardSelector = config.JobSite.FullCardSelector
 	var cardInfoSelector = config.JobSite.CardInfoSelector
 
-	var collection = db.ConnectCollection(config.Mongo)
+	var dbConnection = db.Connect(config.Mongo)
 
 	partialUrl := getPartialUrlFromJobSite(baseUrl)
 	browser := rod.New().MustConnect()
@@ -68,18 +70,32 @@ func main() {
 				if len(jobTextParts) > 0 {
 					rawPostDate := utils.GetRawPostDateOrDefault(4, jobTextParts)
 					postDate := scrapper.CalculateJobPostDate(rawPostDate)
-					jobPost := db.BuildJobPost(jobTextParts, sanitizedUrl, rawPostDate, postDate)
-					result := db.ConditionalInsert(collection, jobPost)
-					documents = append(documents, result)
+					jobPost := buildJobPost(jobTextParts, sanitizedUrl, rawPostDate, postDate)
+					result := dbConnection.GetConditionalDocument(jobPost)
+					if result != nil {
+						documents = append(documents, result)
+					}
 				}
 			}
 		}
 	}
 
-	db.InsertBatch(collection, documents)
+	dbConnection.InsertBatch(documents)
 }
 
 func getPartialUrlFromJobSite(baseUrl string) string {
 	params := fmt.Sprintf("?keywords=%s&location=%s", SearchPosition, SearchLocation)
 	return fmt.Sprintf("%s%s", baseUrl, params)
+}
+
+func buildJobPost(jobTextParts []string, link string, rawPostDate string, postDate time.Time) *domain.JobPost {
+	return &domain.JobPost{
+		Position:    utils.GetOrDefault(0, jobTextParts),
+		Company:     utils.GetOrDefault(1, jobTextParts),
+		Location:    utils.GetOrDefault(2, jobTextParts),
+		Benefit:     utils.GetOrDefault(3, jobTextParts),
+		Link:        link,
+		RawPostDate: rawPostDate,
+		PostDate:    postDate,
+	}
 }

@@ -1,0 +1,2 @@
+db.jobs.remove({})
+db.jobs.countDocuments()
