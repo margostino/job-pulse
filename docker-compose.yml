@@ -1,0 +1,15 @@
+version: '2'
+
+services:
+  grafana:
+    image: grafana/grafana-oss:8.2.0
+    ports:
+      - "3000:3000"
+    user: '104'
+
+  influxdb:
+    image: influxdb
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./docker/influxdb:/var/lib/influxdb
