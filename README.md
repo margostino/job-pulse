@@ -31,4 +31,5 @@ TBD
 8. Alarms for a given rule (hiring freeze?)
 9. Testing, testing, testing
 10. Normalize and improve text sanitization
+11. Geo Chart
 
