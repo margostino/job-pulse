@@ -56,10 +56,12 @@ func (c *Connection) findOne(id string) error {
 }
 
 func (c *Connection) InsertBatch(documents []interface{}) {
-	result, err := c.Collection.InsertMany(context.TODO(), documents, nil)
-	utils.Check(err)
-	if result != nil {
-		fmt.Printf("New batch with %d\n", len(documents))
+	if len(documents) > 0 {
+		result, err := c.Collection.InsertMany(context.TODO(), documents, nil)
+		utils.Check(err)
+		if result != nil {
+			fmt.Printf("New batch with %d\n", len(documents))
+		}
 	}
 }
 

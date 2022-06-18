@@ -28,5 +28,7 @@ TBD
 5. Event Correlation (?)
 6. Reporting automation
 7. Improve logging
-8. Testing, testing, testing
+8. Alarms for a given rule (hiring freeze?)
+9. Testing, testing, testing
+10. Normalize and improve text sanitization
 
