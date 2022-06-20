@@ -9,6 +9,7 @@ import (
 	"github.com/margostino/job-pulse/domain"
 	"github.com/margostino/job-pulse/utils"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"io"
@@ -16,16 +17,18 @@ import (
 )
 
 type Connection struct {
-	Client     *mongo.Client
-	Database   *mongo.Database
-	Collection *mongo.Collection
-	Context    context.Context
+	Client             *mongo.Client
+	Database           *mongo.Database
+	JobPostsCollection *mongo.Collection
+	GeoCollection      *mongo.Collection
+	Context            context.Context
 }
 
-func Connect(config *configuration.MongoConfig) *Connection {
-	uri := getUri(config.Username, config.Password, config.Hostname, config.RetryWrites)
-	database := config.Database
-	collection := config.Collection
+func Connect(config *configuration.Configuration) *Connection {
+	uri := getUri(config.Mongo.Username, config.Mongo.Password, config.Mongo.Hostname, config.Mongo.RetryWrites)
+	database := config.Mongo.Database
+	jobPostsCollection := config.Mongo.JobPostsCollection
+	geoCollection := config.Mongo.GeocodingCollection
 	serverAPIOptions := options.ServerAPI(options.ServerAPIVersion1)
 	clientOptions := options.Client().ApplyURI(uri).SetServerAPIOptions(serverAPIOptions)
 	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -36,10 +39,11 @@ func Connect(config *configuration.MongoConfig) *Connection {
 	db := client.Database(database)
 
 	return &Connection{
-		Client:     client,
-		Database:   db,
-		Collection: db.Collection(collection),
-		Context:    context.TODO(),
+		Client:             client,
+		Database:           db,
+		JobPostsCollection: db.Collection(jobPostsCollection),
+		GeoCollection:      db.Collection(geoCollection),
+		Context:            context.TODO(),
 	}
 }
 
@@ -49,15 +53,37 @@ func (c *Connection) Close() {
 	}
 }
 
-func (c *Connection) findOne(id string) error {
+func (c *Connection) findOneJobBy(id string) (interface{}, error) {
 	var result interface{}
 	filter := bson.D{{"_id", id}}
-	return c.Collection.FindOne(context.TODO(), filter, nil).Decode(&result)
+	err := c.JobPostsCollection.FindOne(context.TODO(), filter, nil).Decode(&result)
+	return result, err
+}
+
+func (c *Connection) findOneGeoBy(id string) (primitive.M, error) {
+	var geocoding domain.Geocoding
+	filter := bson.D{{"_id", id}}
+	err := c.GeoCollection.FindOne(context.TODO(), filter, nil).Decode(&geocoding)
+	if err == nil {
+		geocodingMap := geocoding.Geocoding.(primitive.D).Map()
+		return geocodingMap, nil
+	}
+	return nil, err
+}
+
+func (c *Connection) InsertOneGeocoding(location string, geocoding interface{}) {
+	id := hashFrom(location)
+	document := bson.D{
+		{"_id", id},
+		{"geocoding", geocoding},
+	}
+	_, err := c.GeoCollection.InsertOne(context.TODO(), document, nil)
+	utils.Check(err)
 }
 
 func (c *Connection) InsertBatch(documents []interface{}) {
 	if len(documents) > 0 {
-		result, err := c.Collection.InsertMany(context.TODO(), documents, nil)
+		result, err := c.JobPostsCollection.InsertMany(context.TODO(), documents, nil)
 		utils.Check(err)
 		if result != nil {
 			fmt.Printf("New batch with %d\n", len(documents))
@@ -65,14 +91,31 @@ func (c *Connection) InsertBatch(documents []interface{}) {
 	}
 }
 
+func (c *Connection) FindOneGeoBy(location string) (primitive.M, error) {
+	id := hashFrom(location)
+	return c.findOneGeoBy(id)
+}
+
+func (c *Connection) GetGeoDocument(geocoding interface{}) bson.D {
+	return bson.D{
+		{"geocoding", geocoding},
+	}
+}
+
 func (c *Connection) GetConditionalDocument(data *domain.JobPost) bson.D {
 	id := generateHashID(data)
-	err := c.findOne(id)
+	_, err := c.findOneJobBy(id)
 	if err != nil {
+		coordinates := bson.A{data.Longitude, data.Latitude}
+		geo := bson.D{
+			{"type", "Point"},
+			{"coordinates", coordinates},
+		}
 		metadata := bson.D{
 			{"company", data.Company},
 			{"position", data.Position},
 			{"location", data.Location},
+			{"geo", geo},
 			{"benefit", data.Benefit},
 			{"Link", data.Link},
 		}

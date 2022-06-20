@@ -32,4 +32,6 @@ TBD
 9. Testing, testing, testing
 10. Normalize and improve text sanitization
 11. Geo Chart
+12. IO async
+13. Support batches or streams
 

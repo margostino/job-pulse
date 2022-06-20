@@ -1,4 +1,4 @@
-package main
+package collector
 
 import (
 	"fmt"
@@ -6,31 +6,47 @@ import (
 	"github.com/margostino/job-pulse/configuration"
 	"github.com/margostino/job-pulse/db"
 	"github.com/margostino/job-pulse/domain"
+	"github.com/margostino/job-pulse/geo"
 	"github.com/margostino/job-pulse/scrapper"
 	"github.com/margostino/job-pulse/utils"
+	"log"
+	"os"
 	"strings"
 	"time"
 )
 
-const (
-	SearchPosition = "software engineer"
-	SearchLocation = "stockholm"
-)
+type InputParams struct {
+	searchPosition string
+	searchLocation string
+}
 
-func main() {
-	config := configuration.GetConfig()
+type Collector struct {
+	db          *db.Connection
+	geo         *geo.Connection
+	config      *configuration.Configuration
+	inputParams *InputParams
+}
 
+func (c *Collector) Start() error {
+	if len(os.Args) != 3 {
+		example := "go run ./collector \"engineer\" \"stockholm\""
+		message := fmt.Sprintf("Missing parameters!\nExample: %s", example)
+		panic(message)
+	}
+	c.inputParams.searchPosition = os.Args[1]
+	c.inputParams.searchLocation = os.Args[2]
+
+	var latitude float64
+	var longitude float64
 	var index = 0
 	var isEnd = false
-	var factor = config.App.ScanFactor
-	var baseUrl = config.JobSite.BaseUrl
+	var factor = c.config.App.ScanFactor
+	var baseUrl = c.config.JobSite.BaseUrl
 	var documents = make([]interface{}, 0)
-	var fullCardSelector = config.JobSite.FullCardSelector
-	var cardInfoSelector = config.JobSite.CardInfoSelector
+	var fullCardSelector = c.config.JobSite.FullCardSelector
+	var cardInfoSelector = c.config.JobSite.CardInfoSelector
 
-	var dbConnection = db.Connect(config.Mongo)
-
-	partialUrl := getPartialUrlFromJobSite(baseUrl)
+	partialUrl := c.getPartialUrlFromJobSite(baseUrl)
 	browser := rod.New().MustConnect()
 	defer browser.Close()
 
@@ -71,7 +87,22 @@ func main() {
 					rawPostDate := utils.GetRawPostDateOrDefault(4, jobTextParts)
 					postDate := scrapper.CalculateJobPostDate(rawPostDate)
 					jobPost := buildJobPost(jobTextParts, sanitizedUrl, rawPostDate, postDate)
-					result := dbConnection.GetConditionalDocument(jobPost)
+					geocoding, _ := c.db.FindOneGeoBy(jobPost.Location)
+					// TODO: best effort for location similarity string (e.g. Stockholm == Stockholm, Sweden)
+					if geocoding == nil {
+						log.Printf("New geocoding for %s", jobPost.Location)
+						newGeocoding := c.geo.Get(jobPost.Location)
+						newGeocodingMap := (*newGeocoding).(map[string]interface{})
+						latitude = newGeocodingMap["latitude"].(float64)
+						longitude = newGeocodingMap["longitude"].(float64)
+						c.db.InsertOneGeocoding(jobPost.Location, newGeocoding)
+					} else {
+						latitude = geocoding["latitude"].(float64)
+						longitude = geocoding["longitude"].(float64)
+					}
+					jobPost.Latitude = latitude
+					jobPost.Longitude = longitude
+					result := c.db.GetConditionalDocument(jobPost)
 					if result != nil {
 						documents = append(documents, result)
 					}
@@ -80,11 +111,17 @@ func main() {
 		}
 	}
 
-	dbConnection.InsertBatch(documents)
+	c.db.InsertBatch(documents)
+
+	return nil // TODO tbd
 }
 
-func getPartialUrlFromJobSite(baseUrl string) string {
-	params := fmt.Sprintf("?keywords=%s&location=%s", SearchPosition, SearchLocation)
+func (c *Collector) Close() {
+	c.db.Close()
+}
+
+func (c *Collector) getPartialUrlFromJobSite(baseUrl string) string {
+	params := fmt.Sprintf("?keywords=%s&location=%s", c.inputParams.searchPosition, c.inputParams.searchLocation)
 	return fmt.Sprintf("%s%s", baseUrl, params)
 }
 
@@ -97,5 +134,12 @@ func buildJobPost(jobTextParts []string, link string, rawPostDate string, postDa
 		Link:        link,
 		RawPostDate: rawPostDate,
 		PostDate:    postDate,
+	}
+}
+
+func initInputParams() *InputParams {
+	return &InputParams{
+		searchPosition: "",
+		searchLocation: "",
 	}
 }

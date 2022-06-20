@@ -1,2 +1,3 @@
 db.jobs.remove({})
 db.jobs.countDocuments()
+db.jobs.createIndex( { "metadata.geo" : "2dsphere" } )

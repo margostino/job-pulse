@@ -10,4 +10,10 @@ type JobPost struct {
 	Link        string
 	RawPostDate string
 	PostDate    time.Time
+	Latitude    float64
+	Longitude   float64
+}
+
+type Geocoding struct {
+	Geocoding interface{} `bson:"geocoding"`
 }
