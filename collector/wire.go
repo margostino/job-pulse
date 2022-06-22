@@ -15,7 +15,7 @@ func NewCollector() (*Collector, error) {
 		db.Connect,
 		geo.Connect,
 		configuration.GetConfig,
-		initInputParams,
+		newInputParams,
 		wire.Struct(new(Collector), "*"),
 	)
 	return &Collector{}, nil

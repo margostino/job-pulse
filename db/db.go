@@ -26,6 +26,12 @@ type Connection struct {
 	Context            context.Context
 }
 
+type Stats struct {
+	StartTime     time.Time
+	PositionInput string
+	LocationInput string
+}
+
 func Connect(config *configuration.Configuration) *Connection {
 	uri := getUri(config.Mongo.Username, config.Mongo.Password, config.Mongo.Hostname, config.Mongo.RetryWrites)
 	database := config.Mongo.Database
@@ -85,24 +91,32 @@ func (c *Connection) InsertOneGeocoding(location string, geocoding interface{}) 
 	utils.Check(err)
 }
 
-func (c *Connection) InsertBatch(documents []interface{}) {
+func (c *Connection) InsertBatch(documents []interface{}, stats *Stats) {
+	var status string
 	if len(documents) > 0 {
 		result, err := c.JobPostsCollection.InsertMany(context.TODO(), documents, nil)
 		if err != nil {
-			c.InsertBatchStats("failed", documents)
+			status = "failed"
 		}
 		utils.Check(err)
 		if result != nil {
 			fmt.Printf("New batch with %d\n", len(documents))
+			status = "ok"
+		} else {
+			status = "no-result"
 		}
-		c.InsertBatchStats("ok", documents)
 	}
+	c.InsertBatchStats(status, len(documents), stats)
 }
 
-func (c *Connection) InsertBatchStats(status string, documents []interface{}) {
+func (c *Connection) InsertBatchStats(status string, total int, stats *Stats) {
+	duration := time.Now().UTC().Sub(stats.StartTime)
 	metadata := bson.D{
-		{"jobs_count", len(documents)},
+		{"jobs_count", total},
 		{"status", status},
+		{"duration", duration.String()},
+		{"position_input", stats.PositionInput},
+		{"location_input", stats.LocationInput},
 	}
 	document := bson.D{
 		{"timestamp", time.Now().UTC()},

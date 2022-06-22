@@ -18,7 +18,7 @@ func NewCollector() (*Collector, error) {
 	configurationConfiguration := configuration.GetConfig()
 	connection := db.Connect(configurationConfiguration)
 	geoConnection := geo.Connect(configurationConfiguration)
-	inputParams := initInputParams()
+	inputParams := newInputParams()
 	collector := &Collector{
 		db:          connection,
 		geo:         geoConnection,

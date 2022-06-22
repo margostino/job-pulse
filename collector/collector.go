@@ -16,8 +16,8 @@ import (
 )
 
 type InputParams struct {
-	searchPosition string
-	searchLocation string
+	SearchPosition string
+	SearchLocation string
 }
 
 type Collector struct {
@@ -28,13 +28,19 @@ type Collector struct {
 }
 
 func (c *Collector) Start() error {
+	stats := &db.Stats{
+		StartTime:     time.Now().UTC(),
+		PositionInput: c.inputParams.SearchPosition,
+		LocationInput: c.inputParams.SearchLocation,
+	}
+
 	if len(os.Args) != 3 {
 		example := "go run ./collector \"engineer\" \"stockholm\""
 		message := fmt.Sprintf("Missing parameters!\nExample: %s", example)
 		panic(message)
 	}
-	c.inputParams.searchPosition = os.Args[1]
-	c.inputParams.searchLocation = os.Args[2]
+	c.inputParams.SearchPosition = os.Args[1]
+	c.inputParams.SearchLocation = os.Args[2]
 
 	var latitude float64
 	var longitude float64
@@ -114,7 +120,7 @@ func (c *Collector) Start() error {
 		}
 	}
 
-	c.db.InsertBatch(documents)
+	c.db.InsertBatch(documents, stats)
 
 	return nil // TODO tbd
 }
@@ -124,7 +130,7 @@ func (c *Collector) Close() {
 }
 
 func (c *Collector) getPartialUrlFromJobSite(baseUrl string) string {
-	params := fmt.Sprintf("?keywords=%s&location=%s", c.inputParams.searchPosition, c.inputParams.searchLocation)
+	params := fmt.Sprintf("?keywords=%s&location=%s", c.inputParams.SearchPosition, c.inputParams.SearchLocation)
 	return fmt.Sprintf("%s%s", baseUrl, params)
 }
 
@@ -140,9 +146,9 @@ func buildJobPost(jobTextParts []string, link string, rawPostDate string, postDa
 	}
 }
 
-func initInputParams() *InputParams {
+func newInputParams() *InputParams {
 	return &InputParams{
-		searchPosition: "",
-		searchLocation: "",
+		SearchPosition: "",
+		SearchLocation: "",
 	}
 }
