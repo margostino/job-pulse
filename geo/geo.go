@@ -43,8 +43,17 @@ func (c *Connection) Get(query string) *interface{} {
 		log.Fatal(err)
 	}
 	// TODO: validate and check the following before returning
-	geocodingData := geocoding.(map[string]interface{})["data"].([]interface{})[0]
-	return &geocodingData
+	rawData := geocoding.(map[string]interface{})["data"]
+
+	if rawData != nil {
+		data := rawData.([]interface{})
+		if len(data) > 0 {
+			geocodingData := geocoding.(map[string]interface{})["data"].([]interface{})[0]
+			return &geocodingData
+		}
+	}
+	log.Printf("No geocoding results for query %s", query)
+	return nil
 }
 
 func (c *Connection) getRequest(query string) *http.Request {

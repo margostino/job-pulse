@@ -59,6 +59,7 @@ func (c *Collector) Start() error {
 
 		if len(entries) == 0 {
 			isEnd = true
+			//index = 0
 		}
 
 		for _, entry := range entries {
@@ -92,10 +93,12 @@ func (c *Collector) Start() error {
 					if geocoding == nil {
 						log.Printf("New geocoding for %s", jobPost.Location)
 						newGeocoding := c.geo.Get(jobPost.Location)
-						newGeocodingMap := (*newGeocoding).(map[string]interface{})
-						latitude = newGeocodingMap["latitude"].(float64)
-						longitude = newGeocodingMap["longitude"].(float64)
-						c.db.InsertOneGeocoding(jobPost.Location, newGeocoding)
+						if newGeocoding != nil {
+							newGeocodingMap := (*newGeocoding).(map[string]interface{})
+							latitude = newGeocodingMap["latitude"].(float64)
+							longitude = newGeocodingMap["longitude"].(float64)
+							c.db.InsertOneGeocoding(jobPost.Location, newGeocoding)
+						}
 					} else {
 						latitude = geocoding["latitude"].(float64)
 						longitude = geocoding["longitude"].(float64)

@@ -18,6 +18,7 @@ type MongoConfig struct {
 	Database            string `yaml:"database"`
 	JobPostsCollection  string `yaml:"job_posts_collection"`
 	GeocodingCollection string `yaml:"geocoding_collection"`
+	BatchesCollection   string `yaml:"batches_collection"`
 	Username            string `yaml:"username"`
 	Password            string `yaml:"password"`
 	RetryWrites         bool   `yaml:"retry_writes"`

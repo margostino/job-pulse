@@ -15,7 +15,7 @@ JobPulse search and collect Job Posts from any source (e.g. Linkedin) for a give
 
 So far a collector application is implemented. In order to start collecting data, run the following:
 ```go
-go run ./pulse "software engineer" "stockholm"
+go run ./runner "software engineer" "stockholm"
 ```
 
 ## Features

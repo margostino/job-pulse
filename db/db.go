@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"io"
 	"log"
+	"time"
 )
 
 type Connection struct {
@@ -21,6 +22,7 @@ type Connection struct {
 	Database           *mongo.Database
 	JobPostsCollection *mongo.Collection
 	GeoCollection      *mongo.Collection
+	BatchesCollection  *mongo.Collection
 	Context            context.Context
 }
 
@@ -29,6 +31,7 @@ func Connect(config *configuration.Configuration) *Connection {
 	database := config.Mongo.Database
 	jobPostsCollection := config.Mongo.JobPostsCollection
 	geoCollection := config.Mongo.GeocodingCollection
+	batchesCollection := config.Mongo.BatchesCollection
 	serverAPIOptions := options.ServerAPI(options.ServerAPIVersion1)
 	clientOptions := options.Client().ApplyURI(uri).SetServerAPIOptions(serverAPIOptions)
 	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -43,6 +46,7 @@ func Connect(config *configuration.Configuration) *Connection {
 		Database:           db,
 		JobPostsCollection: db.Collection(jobPostsCollection),
 		GeoCollection:      db.Collection(geoCollection),
+		BatchesCollection:  db.Collection(batchesCollection),
 		Context:            context.TODO(),
 	}
 }
@@ -84,11 +88,28 @@ func (c *Connection) InsertOneGeocoding(location string, geocoding interface{}) 
 func (c *Connection) InsertBatch(documents []interface{}) {
 	if len(documents) > 0 {
 		result, err := c.JobPostsCollection.InsertMany(context.TODO(), documents, nil)
+		if err != nil {
+			c.InsertBatchStats("failed", documents)
+		}
 		utils.Check(err)
 		if result != nil {
 			fmt.Printf("New batch with %d\n", len(documents))
 		}
+		c.InsertBatchStats("ok", documents)
 	}
+}
+
+func (c *Connection) InsertBatchStats(status string, documents []interface{}) {
+	metadata := bson.D{
+		{"jobs_count", len(documents)},
+		{"status", status},
+	}
+	document := bson.D{
+		{"timestamp", time.Now().UTC()},
+		{"metadata", metadata},
+	}
+	_, err := c.BatchesCollection.InsertOne(context.TODO(), document, nil)
+	utils.Check(err)
 }
 
 func (c *Connection) FindOneGeoBy(location string) (primitive.M, error) {
@@ -125,10 +146,10 @@ func (c *Connection) GetConditionalDocument(data *domain.JobPost) bson.D {
 			{"metadata", metadata},
 			{"jobs_count", 1},
 		}
-		log.Printf("New Job [%s] for [%s] %s\n", data.Position, data.Company, data.RawPostDate)
+		log.Printf("New Job [%s] for [%s - %s] %s\n", data.Position, data.Company, data.Location, data.RawPostDate)
 		return document
 	}
-	log.Printf("Found in DB! - Job [%s] for [%s] %s\n", data.Position, data.Company, data.RawPostDate)
+	log.Printf("Found in DB! - Job [%s] for [%s - %s] %s\n", data.Position, data.Company, data.Location, data.RawPostDate)
 	return nil
 }
 
