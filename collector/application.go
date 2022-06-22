@@ -30,8 +30,6 @@ func (a *App) Start() error {
 
 	var index = 0
 	var isEnd = false
-	var latitude float64
-	var longitude float64
 	var factor = a.config.App.ScanFactor
 	var baseUrl = a.config.JobSite.BaseUrl
 	var documents = make([]interface{}, 0)
@@ -71,23 +69,7 @@ func (a *App) Start() error {
 					rawPostDate := utils.GetRawPostDateOrDefault(4, jobTextParts)
 					postDate := calculateJobPostDate(rawPostDate)
 					jobPost := buildJobPost(jobTextParts, sanitizedUrl, rawPostDate, postDate)
-					geocoding, _ := a.db.FindOneGeoBy(jobPost.Location)
-					// TODO: best effort for location similarity string (e.g. Stockholm == Stockholm, Sweden)
-					if geocoding == nil {
-						log.Printf("New geocoding for %s", jobPost.Location)
-						newGeocoding := a.geo.Get(jobPost.Location)
-						if newGeocoding != nil {
-							newGeocodingMap := (*newGeocoding).(map[string]interface{})
-							latitude = newGeocodingMap["latitude"].(float64)
-							longitude = newGeocodingMap["longitude"].(float64)
-							a.db.InsertOneGeocoding(jobPost.Location, newGeocoding)
-						}
-					} else {
-						latitude = geocoding["latitude"].(float64)
-						longitude = geocoding["longitude"].(float64)
-					}
-					jobPost.Latitude = latitude
-					jobPost.Longitude = longitude
+					jobPost.Latitude, jobPost.Longitude = a.getGeocoding(jobPost.Location)
 					result := a.db.GetConditionalDocument(jobPost)
 					if result != nil {
 						documents = append(documents, result)
@@ -128,4 +110,25 @@ func (a *App) extractUrlFrom(entry *rod.Element) string {
 		utils.Check(err)
 	}
 	return sanitizedUrl
+}
+
+func (a *App) getGeocoding(location string) (float64, float64) {
+	var latitude float64
+	var longitude float64
+	geocoding, _ := a.db.FindOneGeoBy(location)
+	// TODO: best effort for location similarity string (e.g. Stockholm == Stockholm, Sweden)
+	if geocoding == nil {
+		log.Printf("New geocoding for %s", location)
+		newGeocoding := a.geo.Get(location)
+		if newGeocoding != nil {
+			newGeocodingMap := (*newGeocoding).(map[string]interface{})
+			latitude = newGeocodingMap["latitude"].(float64)
+			longitude = newGeocodingMap["longitude"].(float64)
+			a.db.InsertOneGeocoding(location, newGeocoding)
+		}
+	} else {
+		latitude = geocoding["latitude"].(float64)
+		longitude = geocoding["longitude"].(float64)
+	}
+	return latitude, longitude
 }
