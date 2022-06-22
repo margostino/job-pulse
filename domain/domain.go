@@ -14,6 +14,8 @@ type JobPost struct {
 	Longitude   float64
 }
 
-type Geocoding struct {
-	Geocoding interface{} `bson:"geocoding"`
+type Stats struct {
+	StartTime     time.Time
+	PositionInput string
+	LocationInput string
 }

@@ -8,15 +8,17 @@ import (
 	"github.com/margostino/job-pulse/configuration"
 	"github.com/margostino/job-pulse/db"
 	"github.com/margostino/job-pulse/geo"
+	"github.com/margostino/job-pulse/scrapper"
 )
 
-func NewCollector() (*Collector, error) {
+func NewApp() (*App, error) {
 	wire.Build(
 		db.Connect,
 		geo.Connect,
+		scrapper.New,
 		configuration.GetConfig,
-		newInputParams,
-		wire.Struct(new(Collector), "*"),
+		NewInputParams,
+		wire.Struct(new(App), "*"),
 	)
-	return &Collector{}, nil
+	return &App{}, nil
 }

@@ -25,8 +25,10 @@ type MongoConfig struct {
 }
 
 type AppConfig struct {
-	DefaultDate string `yaml:"default_date"`
-	ScanFactor  int    `yaml:"scan_factor"`
+	DefaultDate      string  `yaml:"default_date"`
+	ScanFactor       int     `yaml:"scan_factor"`
+	TimeMode         bool    `yaml:"time_mode"`
+	TimeModeDuration float64 `yaml:"time_mode_duration"`
 }
 
 type GeoConfig struct {

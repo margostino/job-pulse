@@ -5,17 +5,10 @@ import (
 	"github.com/margostino/job-pulse/utils"
 )
 
-//const (
-//	SearchPosition = "software engineer"
-//	SearchLocation = "stockholm"
-//)
-
-var searchPosition = ""
-var searchLocation = ""
-
 func main() {
-	collector, err := collector.NewCollector()
+	app, err := collector.NewApp()
 	utils.Check(err)
-	collector.Start()
-	collector.Close()
+	app.ValidateInput()
+	app.Start()
+	app.Close()
 }
