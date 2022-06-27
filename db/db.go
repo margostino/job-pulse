@@ -162,7 +162,7 @@ func (c *Connection) GetConditionalDocument(data *domain.JobPost) bson.D {
 }
 
 func generateHashID(jobPost *domain.JobPost) string {
-	seed := fmt.Sprintf("%s_%s_%s_%s", jobPost.Position, jobPost.Company, jobPost.Location, jobPost.RawPostDate)
+	seed := fmt.Sprintf("%s_%s_%s_%s", jobPost.Position, jobPost.Company, jobPost.Location, jobPost.Link)
 	return hashFrom(seed)
 }
 
