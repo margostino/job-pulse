@@ -58,6 +58,7 @@ func (a *App) Start() error {
 			card, err := entry.Element(cardInfoSelector)
 			if err != nil {
 				log.Println(err.Error())
+				log.Println(entry.String())
 				break
 			} else {
 				jobText, err := card.Text()
@@ -118,9 +119,10 @@ func (a *App) getGeocoding(location string) (float64, float64) {
 	geocoding, _ := a.db.FindOneGeoBy(location)
 	// TODO: best effort for location similarity string (e.g. Stockholm == Stockholm, Sweden)
 	if geocoding == nil {
-		log.Printf("New geocoding for %s", location)
+		log.Printf("New geocoding for location: %s", location)
 		newGeocoding := a.geo.Get(location)
 		if newGeocoding != nil {
+			println(fmt.Sprintf("%v", *newGeocoding))
 			newGeocodingMap := (*newGeocoding).(map[string]interface{})
 			latitude = newGeocodingMap["latitude"].(float64)
 			longitude = newGeocodingMap["longitude"].(float64)

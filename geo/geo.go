@@ -52,7 +52,7 @@ func (c *Connection) Get(query string) *interface{} {
 			return &geocodingData
 		}
 	}
-	log.Printf("No geocoding results for query %s", query)
+	log.Printf("No geocoding results for query: %s", query)
 	return nil
 }
 

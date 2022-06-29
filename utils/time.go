@@ -41,6 +41,9 @@ func GetRawPostDateOrDefault(index int, list []string) string {
 		for _, value := range allParts {
 			if strings.Contains(value, " ago") {
 				parts := strings.SplitN(strings.TrimSpace(value), " ", -1)
+				if len(parts) < 4 {
+					println("")
+				}
 				return strings.Join(parts[1:4], " ")
 			}
 		}

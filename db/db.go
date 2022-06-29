@@ -157,7 +157,7 @@ func (c *Connection) GetConditionalDocument(data *domain.JobPost) bson.D {
 		log.Printf("New Job [%s] for [%s - %s] %s\n", data.Position, data.Company, data.Location, data.RawPostDate)
 		return document
 	}
-	log.Printf("Found in DB! - Job [%s] for [%s - %s] %s\n", data.Position, data.Company, data.Location, data.RawPostDate)
+	//log.Printf("Found in DB! - Job [%s] for [%s - %s] %s\n", data.Position, data.Company, data.Location, data.RawPostDate)
 	return nil
 }
 
