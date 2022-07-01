@@ -94,17 +94,18 @@ func (c *Connection) InsertBatch(documents []interface{}, stats *domain.Stats) {
 		}
 		utils.Check(err)
 		if result != nil {
-			fmt.Printf("New batch with %d\n", len(documents))
 			status = "ok"
 		} else {
 			status = "no-result"
+			log.Println("Batch failed")
 		}
+		c.InsertBatchStats(status, len(documents), stats)
 	}
-	c.InsertBatchStats(status, len(documents), stats)
 }
 
 func (c *Connection) InsertBatchStats(status string, total int, stats *domain.Stats) {
-	duration := time.Now().UTC().Sub(stats.StartTime)
+	now := time.Now().UTC()
+	duration := now.Sub(stats.StartTime)
 	metadata := bson.D{
 		{"jobs_count", total},
 		{"status", status},
@@ -113,9 +114,10 @@ func (c *Connection) InsertBatchStats(status string, total int, stats *domain.St
 		{"location_input", stats.LocationInput},
 	}
 	document := bson.D{
-		{"timestamp", time.Now().UTC()},
+		{"timestamp", now},
 		{"metadata", metadata},
 	}
+	log.Printf("New batch completed with %d documents: %s", total, now)
 	_, err := c.BatchesCollection.InsertOne(context.TODO(), document, nil)
 	utils.Check(err)
 }

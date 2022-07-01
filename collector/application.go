@@ -7,6 +7,7 @@ import (
 	"github.com/margostino/job-pulse/utils"
 	"log"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -113,6 +114,7 @@ func (a *App) extractUrlFrom(entry *rod.Element) string {
 	return sanitizedUrl
 }
 
+// TODO: separate concerns between Geo and DB modules
 func (a *App) getGeocoding(location string) (float64, float64) {
 	var latitude float64
 	var longitude float64
@@ -123,6 +125,7 @@ func (a *App) getGeocoding(location string) (float64, float64) {
 		newGeocoding := a.geo.Get(location)
 		if newGeocoding != nil {
 			println(fmt.Sprintf("%v", *newGeocoding))
+			validateGeoResponse(*newGeocoding)
 			newGeocodingMap := (*newGeocoding).(map[string]interface{})
 			latitude = newGeocodingMap["latitude"].(float64)
 			longitude = newGeocodingMap["longitude"].(float64)
@@ -133,4 +136,11 @@ func (a *App) getGeocoding(location string) (float64, float64) {
 		longitude = geocoding["longitude"].(float64)
 	}
 	return latitude, longitude
+}
+
+func validateGeoResponse(value interface{}) {
+	rt := reflect.TypeOf(value)
+	if rt.Kind() == reflect.Slice {
+		log.Println("Geocoding response was empty slice")
+	}
 }
